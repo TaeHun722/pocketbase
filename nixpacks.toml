@@ -1,0 +1,10 @@
+# Nixpacks가 빌드할 언어 환경을 지정합니다.
+providers = ["node"]
+
+# 빌드 명령어를 정의합니다.
+[phases]
+build = "npm run build"
+
+# 시작 명령어를 정의합니다.
+[start]
+cmd = "npx next start -p $PORT"
