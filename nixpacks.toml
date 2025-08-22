@@ -1,9 +1,11 @@
 # Nixpacks가 빌드할 언어 환경을 지정합니다.
 providers = ["node"]
 
-# 빌드 명령어를 정의합니다.
 [phases]
-build = "npm run build"
+# 빌드 단계를 정의합니다.
+# "build"는 문자열이 아닌, 별도의 섹션으로 정의되어야 합니다.
+[phases.build]
+cmd = "npm run build"
 
 # 시작 명령어를 정의합니다.
 [start]
