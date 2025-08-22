@@ -1,26 +1,35 @@
-# 베이스 이미지로 가벼운 Alpine Linux의 특정 버전을 사용합니다.
-# 'latest' 대신 특정 버전을 사용하면 예측 가능한 빌드를 보장합니다.
-FROM alpine:3.18
+# STEP 1: 빌드 환경 설정
+FROM node:18-alpine AS builder
 
-# PocketBase 버전을 변수로 지정하여 쉽게 변경할 수 있도록 합니다.
-ARG PB_VERSION=0.29.2
+# 프로젝트의 루트 디렉토리
+WORKDIR /usr/src/app
 
-# 앱 소스를 저장할 작업 디렉토리를 설정합니다.
-# 이렇게 하면 루트 디렉토리(/)가 깨끗하게 유지됩니다.
-WORKDIR /app
+# 패키지 파일과 소스 코드를 복사합니다.
+# 이 단계가 핵심입니다.
+COPY package*.json ./
+COPY . .
 
-# 필요한 도구(curl, unzip)를 설치합니다.
-# --no-cache 옵션으로 이미지 크기를 최소화합니다.
-RUN apk add --no-cache curl unzip
+# 의존성 패키지들을 설치합니다.
+RUN npm install
 
-# 지정된 버전의 PocketBase를 다운로드하고 압축을 풉니다.
-RUN curl -L https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip -o temp.zip \
-    && unzip temp.zip \
-    && rm temp.zip
+# Next.js 앱이 있는 'app' 디렉토리로 작업 경로를 변경하고 빌드합니다.
+WORKDIR /usr/src/app/app
+RUN npm run build
 
-# 컨테이너가 외부 요청을 받을 수 있도록 8080 포트를 개방합니다.
-EXPOSE 8080
+# ---
+# STEP 2: 실행 환경 설정
+FROM node:18-alpine
 
-# 컨테이너가 시작될 때 PocketBase 서버를 실행합니다.
-# "--http=0.0.0.0:8080" 명령어로 컨테이너 내부의 모든 네트워크 인터페이스에 바인딩합니다.
-CMD ["./pocketbase", "serve", "--http=0.0.0.0:8080"]
+# 실행 디렉토리로 /usr/src/app/app/build 를 설정합니다.
+WORKDIR /usr/src/app/app/build
+
+# 빌드 환경에서 생성된 파일들을 최종 환경으로 복사합니다.
+COPY --from=builder /usr/src/app/app/.next/standalone ./
+COPY --from=builder /usr/src/app/app/node_modules ./node_modules
+COPY --from=builder /usr/src/app/app/public ./public
+
+# 앱이 사용할 포트를 외부에 노출합니다.
+EXPOSE 3000
+
+# 앱을 실행하는 명령어를 지정합니다.
+CMD ["node", "server.js"]
