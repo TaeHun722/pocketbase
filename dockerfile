@@ -1,21 +1,22 @@
 # STEP 1: 빌드 환경 설정
-# node:18-alpine 이미지로 시작합니다.
+# Node.js 18 기반의 경량 이미지를 사용합니다.
 FROM node:18-alpine AS builder
 
-# 앱의 작업 디렉토리를 /usr/src/app으로 설정합니다.
+# 작업 디렉토리를 /usr/src/app으로 설정합니다.
 WORKDIR /usr/src/app
 
-# 중요한 package.json 파일을 먼저 복사하여 의존성 캐싱을 활용합니다.
-COPY ./app/package*.json ./app/
-
-# 의존성을 설치합니다.
-RUN npm install --prefix ./app/
-
-# 모든 소스 코드를 복사합니다.
+# 프로젝트의 모든 파일을 Docker 컨테이너로 복사합니다.
 COPY . .
 
-# Next.js 앱이 있는 'app' 디렉토리로 작업 경로를 변경하고 빌드합니다.
+# 의존성 패키지를 설치합니다.
+RUN npm install
+
+# --- 핵심 수정 부분 ---
+# Next.js 앱이 있는 폴더로 이동합니다.
+# 당신의 Next.js 프로젝트 폴더 이름으로 교체해주세요. (예: ./app 또는 ./src)
 WORKDIR /usr/src/app/app
+
+# 빌드 명령어를 실행합니다.
 RUN npm run build
 
 # ---
@@ -27,12 +28,12 @@ FROM node:18-alpine
 WORKDIR /usr/src/app
 
 # 빌드 환경에서 생성된 파일들을 최종 환경으로 복사합니다.
-COPY --from=builder /usr/src/app/app/.next/standalone ./app/.next/standalone
-COPY --from=builder /usr/src/app/app/node_modules ./app/node_modules
-COPY --from=builder /usr/src/app/app/public ./app/public
+COPY --from=builder /usr/src/app/app/.next/standalone ./
+COPY --from=builder /usr/src/app/app/node_modules ./node_modules
+COPY --from=builder /usr/src/app/app/public ./public
 
-# 포트 노출
+# 앱이 사용할 포트를 외부에 노출합니다.
 EXPOSE 3000
 
-# 앱 실행
-CMD ["node", "./app/.next/standalone/server.js"]
+# 앱을 실행하는 명령어를 지정합니다.
+CMD ["node", "server.js"]
